@@ -82,9 +82,47 @@ export default function ProfileScreen() {
     }
   };
 
+  const initials = (() => {
+    const name = (profile?.full_name ?? '').trim();
+    if (name) {
+      const parts = name.split(/\s+/);
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    const email = (user?.email ?? profile?.email ?? '').trim();
+    if (email) return email.slice(0, 2).toUpperCase();
+    return '?';
+  })();
+
+  const avatarColors =
+    profile?.role === 'admin'
+      ? { bg: COLORS.warning, shadow: '#FBBF24', text: '#0B0813' }
+      : profile?.role === 'teacher'
+        ? { bg: COLORS.primary, shadow: '#8B5CF6', text: '#FFFFFF' }
+        : { bg: COLORS.accent, shadow: '#06B6D4', text: '#0B0813' };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Profile</Text>
+
+      <View style={styles.avatarSection}>
+        <View
+          style={[
+            styles.avatar,
+            { backgroundColor: avatarColors.bg, shadowColor: avatarColors.shadow },
+          ]}
+        >
+          <Text style={[styles.avatarText, { color: avatarColors.text }]}>
+            {initials}
+          </Text>
+        </View>
+        <Text style={styles.avatarName} numberOfLines={1}>
+          {profile?.full_name || user?.email?.split('@')[0] || 'Set up your profile'}
+        </Text>
+        <Text style={styles.avatarEmail} numberOfLines={1}>
+          {user?.email ?? profile?.email ?? ''}
+        </Text>
+      </View>
       {profile?.role === 'teacher' ? (
         <View style={styles.roleBadge}>
           <Text style={styles.roleBadgeText}>Teacher</Text>
@@ -221,6 +259,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
   },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 4,
+  },
+  avatar: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF22',
+    marginBottom: 8,
+  },
+  avatarText: {
+    fontSize: 30,
+    fontWeight: '800',
+  },
+  avatarName: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'SpaceGrotesk_700Bold',
+    color: COLORS.textPrimary,
+  },
+  avatarEmail: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
   title: {
     fontSize: 22,
     fontWeight: '700',
@@ -228,17 +295,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   roleBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderRadius: 999,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     marginBottom: 16,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 4,
   },
   roleBadgeStudent: {
     backgroundColor: COLORS.accent,
@@ -260,16 +322,11 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     backgroundColor: COLORS.card,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.cardBorderNeon,
+    borderColor: COLORS.border,
     padding: 16,
     marginBottom: 24,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 2,
   },
   label: {
     fontSize: 12,
@@ -318,13 +375,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#A78BFA',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 10,
-    elevation: 6,
   },
   saveText: {
     color: COLORS.textOnPrimary,

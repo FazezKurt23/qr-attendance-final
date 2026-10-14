@@ -30,6 +30,8 @@ export default function ScanScreen() {
   const [manualCode, setManualCode] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const [eventTitle, setEventTitle] = useState<string | null>(null);
+
   useEffect(() => {
     let active = true;
     if (!user) {
@@ -94,6 +96,7 @@ export default function ScanScreen() {
       setBusy(false);
       setMessage(result.message);
       setSuccess(result.success);
+      setEventTitle(result.eventTitle ?? null);
       if (result.success) {
         try {
           Vibration.vibrate(80);
@@ -110,6 +113,7 @@ export default function ScanScreen() {
     if (scanned) return;
     setScanned(true);
     setLastData(data);
+    setEventTitle(null);
     submitPayload(data);
   };
 
@@ -118,7 +122,15 @@ export default function ScanScreen() {
     const code = manualCode.trim().toUpperCase();
     setScanned(true);
     setLastData(code);
+    setEventTitle(null);
     submitPayload(code);
+  };
+
+  const resetScan = () => {
+    setScanned(false);
+    setMessage(null);
+    setLastData(null);
+    setEventTitle(null);
   };
 
   const identityLabel = identityLoading
@@ -145,32 +157,53 @@ export default function ScanScreen() {
           color={torch ? '#0B0813' : '#FFFFFF'}
         />
       </Pressable>
+      <View style={styles.viewfinderWrap} pointerEvents="none">
+        <View style={styles.frame}>
+          <View style={[styles.corner, styles.cornerTL]} />
+          <View style={[styles.corner, styles.cornerTR]} />
+          <View style={[styles.corner, styles.cornerBL]} />
+          <View style={[styles.corner, styles.cornerBR]} />
+          {!scanned ? (
+            <View style={styles.scanLine} />
+          ) : null}
+        </View>
+        <Text style={styles.frameHint}>Align QR inside the frame</Text>
+      </View>
       <View style={styles.overlay}>
         <View style={styles.identityBar}>
-          <Text style={styles.identityLabel}>Scanning as:</Text>
-          <Text style={styles.identityName} numberOfLines={1}>
-            {identityLabel}
-          </Text>
+          <View style={styles.identityAvatar}>
+            <Text style={styles.identityAvatarText}>
+              {(profileName ?? user?.email ?? '?').trim().slice(0, 1).toUpperCase()}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.identityLabel}>Scanning as</Text>
+            <Text style={styles.identityName} numberOfLines={1}>
+              {identityLabel}
+            </Text>
+          </View>
         </View>
         {message ? (
-          <View style={styles.card}>
+          <View style={[styles.card, success ? styles.cardOk : styles.cardFail]}>
+            <View style={[styles.iconCircle, success ? styles.iconOk : styles.iconFail]}>
+              <Ionicons
+                name={success ? 'checkmark' : 'alert'}
+                size={34}
+                color="#fff"
+              />
+            </View>
+            <Text style={styles.resultTitle}>{success ? 'Attendance recorded!' : 'Scan failed'}</Text>
+            {eventTitle ? (
+              <Text style={styles.eventTitle} numberOfLines={2}>{eventTitle}</Text>
+            ) : null}
             <Text style={[styles.message, success ? styles.ok : styles.fail]}>
               {message}
             </Text>
-            {lastData ? (
-              <Text style={styles.raw} numberOfLines={3}>
-                {lastData}
-              </Text>
-            ) : null}
             <AppButton
               theme="primary"
               title="Scan Again"
               icon="refresh-outline"
-              onPress={() => {
-                setScanned(false);
-                setMessage(null);
-                setLastData(null);
-              }}
+              onPress={resetScan}
             />
           </View>
         ) : (
@@ -251,13 +284,25 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   identityBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: COLORS.card,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
   },
+  identityAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  identityAvatarText: { fontSize: 16, fontWeight: '800', color: '#0B0813' },
   identityLabel: {
     fontSize: 12,
     color: COLORS.textSecondary,
@@ -269,22 +314,41 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: COLORS.card,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.cardBorderNeon,
+    borderColor: COLORS.border,
     padding: 16,
     gap: 10,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
   },
+  cardOk: { borderColor: '#34D39988' },
+  cardFail: { borderColor: '#F8717188' },
+  iconCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  iconOk: { backgroundColor: COLORS.success },
+  iconFail: { backgroundColor: COLORS.danger },
+  resultTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary, textAlign: 'center' },
+  eventTitle: { fontSize: 15, fontWeight: '700', color: COLORS.accent, textAlign: 'center' },
   hint: {
     fontSize: 14,
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
+  viewfinderWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  frame: { width: 250, height: 250, position: 'relative' },
+  corner: { position: 'absolute', width: 44, height: 44, borderColor: '#fff', borderRadius: 4 },
+  cornerTL: { top: 0, left: 0, borderTopWidth: 5, borderLeftWidth: 5, borderTopLeftRadius: 16 },
+  cornerTR: { top: 0, right: 0, borderTopWidth: 5, borderRightWidth: 5, borderTopRightRadius: 16 },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5, borderBottomLeftRadius: 16 },
+  cornerBR: { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5, borderBottomRightRadius: 16 },
+  scanLine: { position: 'absolute', left: 12, right: 12, top: '50%', height: 2, backgroundColor: COLORS.accent, opacity: 0.9 },
+  frameHint: { marginTop: 14, color: '#FFFFFFCC', fontSize: 13, fontWeight: '600' },
   manualRow: {
     flexDirection: 'row',
     gap: 8,

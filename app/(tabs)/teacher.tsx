@@ -304,6 +304,10 @@ export default function TeacherScreen() {
       <Text style={styles.heading}>
         {editingId ? 'Edit Event' : 'Create Event'}
       </Text>
+      <Text style={styles.subheading}>Fill in the details below — QR is generated automatically.</Text>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>1 · Event Details</Text>
 
       <Text style={styles.label}>Event Title</Text>
       <TextInput
@@ -343,6 +347,10 @@ export default function TeacherScreen() {
         placeholderTextColor={COLORS.muted}
         multiline
       />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>2 · Schedule & Rules</Text>
 
       <Text style={styles.label}>Late After (minutes, 0 = no late)</Text>
       <TextInput
@@ -405,6 +413,7 @@ export default function TeacherScreen() {
           <Text style={styles.chipText}>+2 hours</Text>
         </Pressable>
       </View>
+      </View>
 
       <Pressable style={styles.primaryButton} onPress={handleCreateEvent}>
         <Text style={styles.primaryButtonText}>
@@ -420,13 +429,18 @@ export default function TeacherScreen() {
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
       {payload ? (
-        <View style={styles.qrCard}>
-          <QRCode value={payload} size={200} />
-          <Text style={styles.payloadText} numberOfLines={2}>
-            {payloadEvent ? `${payloadEvent.title} (${payloadEvent.event_code})` : 'New event QR'}
+        <View style={styles.qrCardDark}>
+          <Text style={styles.qrCardTitle}>
+            {payloadEvent ? `${payloadEvent.title}` : 'New event QR'}
           </Text>
+          <Text style={styles.qrCardSub}>
+            {payloadEvent ? payloadEvent.event_code : 'Show this to students'}
+          </Text>
+          <View style={styles.qrWhite}>
+            <QRCode value={payload} size={200} />
+          </View>
           <View style={styles.qrActions}>
-            <Pressable style={styles.qrActionBtn} onPress={() => setFullscreenQR(true)}>
+            <Pressable style={[styles.qrActionBtn, styles.qrPrimary]} onPress={() => setFullscreenQR(true)}>
               <Text style={styles.qrActionText}>Fullscreen</Text>
             </Pressable>
             <Pressable style={styles.qrActionBtn} onPress={handleShareQR}>
@@ -479,26 +493,30 @@ export default function TeacherScreen() {
                   style={styles.actionBtn}
                   onPress={() => startEdit(item)}
                 >
+                  <Ionicons name="pencil-outline" size={14} color={COLORS.textPrimary} />
                   <Text style={styles.actionText}>Edit</Text>
                 </Pressable>
                 <Pressable
-                  style={styles.actionBtn}
+                  style={[styles.actionBtn, styles.warnBtn]}
                   onPress={() => handleToggleStatus(item)}
                 >
-                  <Text style={styles.actionText}>
+                  <Ionicons name={item.status === 'open' ? 'lock-closed-outline' : 'lock-open-outline'} size={14} color={COLORS.warning} />
+                  <Text style={[styles.actionText, { color: COLORS.warning }]}>
                     {item.status === 'open' ? 'Close' : 'Reopen'}
                   </Text>
                 </Pressable>
                 <Pressable
-                  style={styles.actionBtn}
+                  style={[styles.actionBtn, styles.primaryBtn]}
                   onPress={() => showQR(item)}
                 >
-                  <Text style={styles.actionText}>Show QR</Text>
+                  <Ionicons name="qr-code-outline" size={14} color="#fff" />
+                  <Text style={[styles.actionText, { color: '#fff' }]}>Show QR</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.actionBtn, styles.dangerBtn]}
                   onPress={() => handleDelete(item)}
                 >
+                  <Ionicons name="trash-outline" size={14} color={COLORS.danger} />
                   <Text style={[styles.actionText, styles.dangerText]}>
                     Delete
                   </Text>
@@ -553,11 +571,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   heading: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
+    fontFamily: 'SpaceGrotesk_700Bold',
     color: COLORS.textPrimary,
-    marginBottom: 16,
+    marginBottom: 4,
   },
+  subheading: { fontSize: 14, color: COLORS.textSecondary, marginBottom: 16 },
+  section: {
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 16,
+    marginBottom: 14,
+  },
+  sectionTitle: { fontSize: 15, fontWeight: '800', fontFamily: 'SpaceGrotesk_700Bold', color: COLORS.accent, marginBottom: 4, letterSpacing: 0.3 },
   lockTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -613,16 +642,9 @@ const styles = StyleSheet.create({
   primaryButton: {
     marginTop: 20,
     backgroundColor: COLORS.primary,
-    borderWidth: 1,
-    borderColor: '#A78BFA',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 12,
-    elevation: 8,
   },
   primaryButtonText: {
     color: COLORS.textOnPrimary,
@@ -662,6 +684,20 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
+  qrCardDark: {
+    marginTop: 20,
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 20,
+    alignItems: 'center',
+    gap: 8,
+  },
+  qrCardTitle: { fontSize: 17, fontWeight: '800', color: COLORS.textPrimary, textAlign: 'center' },
+  qrCardSub: { fontSize: 13, fontWeight: '600', color: COLORS.accent, marginBottom: 8 },
+  qrWhite: { backgroundColor: '#fff', borderRadius: 12, padding: 14 },
+  qrPrimary: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   payloadText: {
     fontSize: 12,
     color: '#4B5563',
@@ -694,11 +730,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 4,
   },
   countText: {
     color: COLORS.textOnPrimary,
@@ -712,12 +743,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
+    backgroundColor: COLORS.surface,
   },
+  primaryBtn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  warnBtn: { borderColor: '#FBBF2466' },
   actionText: {
     fontSize: 13,
     fontWeight: '600',

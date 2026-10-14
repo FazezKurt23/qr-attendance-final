@@ -1,13 +1,32 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import {
+  useFonts,
+  SpaceGrotesk_700Bold,
+  SpaceGrotesk_500Medium,
+} from '@expo-google-fonts/space-grotesk';
+import { Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
 import { COLORS } from '@/constants/colors';
 import { useAuth } from '@/lib/auth';
+
+export const FONTS = {
+  display: 'SpaceGrotesk_700Bold',
+  medium: 'SpaceGrotesk_500Medium',
+  body: 'Inter_400Regular',
+  semibold: 'Inter_600SemiBold',
+} as const;
 
 export default function RootLayout() {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [fontsLoaded] = useFonts({
+    SpaceGrotesk_700Bold,
+    SpaceGrotesk_500Medium,
+    Inter_400Regular,
+    Inter_600SemiBold,
+  });
 
   useEffect(() => {
     if (loading) return;
@@ -26,7 +45,7 @@ export default function RootLayout() {
     }
   }, [session, loading, segments]);
 
-  if (loading) {
+  if (loading || !fontsLoaded) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.accent} />

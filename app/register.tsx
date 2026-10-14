@@ -238,21 +238,25 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   headerContainer: {
-    alignItems: 'flex-start',
-    marginTop: 20,
-    marginBottom: 16,
+    alignItems: 'center',
+    marginTop: 32,
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
+    fontFamily: 'SpaceGrotesk_700Bold',
     color: COLORS.textPrimary,
     marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 15,
     lineHeight: 21,
+    fontFamily: 'Inter_400Regular',
     color: COLORS.textSecondary,
     marginBottom: 32,
+    textAlign: 'center',
   },
   form: {
     marginBottom: 24,
