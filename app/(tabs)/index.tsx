@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,8 +8,12 @@ import { Ionicons } from '@expo/vector-icons';
 import AppButton from '@/components/AppButton';
 import StatusPill from '@/components/StatusPill';
 import { COLORS } from '@/constants/colors';
-import { listOpenEvents, type CloudEvent } from '@/lib/events';
-import { getAttendanceHistory } from '@/lib/attendance';
+import { listAllEvents, listOpenEvents, type CloudEvent } from '@/lib/events';
+import {
+  getAllAttendance,
+  getAttendanceHistory,
+  getTeacherEventAttendance,
+} from '@/lib/attendance';
 import { useAuth } from '@/lib/auth';
 import { getProfile, type Role } from '@/lib/profiles';
 
@@ -22,6 +26,13 @@ function dateBadgeParts(iso: string | null) {
   };
 }
 
+type QuickAction = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  href: Href;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -30,18 +41,41 @@ export default function HomeScreen() {
   const [present, setPresent] = useState(0);
   const [late, setLate] = useState(0);
   const [role, setRole] = useState<Role | null>(null);
+  const [myEventsCount, setMyEventsCount] = useState(0);
+  const [totalScans, setTotalScans] = useState(0);
+  const [allEventsCount, setAllEventsCount] = useState(0);
+  const [allAttendanceCount, setAllAttendanceCount] = useState(0);
 
   const load = useCallback(async () => {
     setRefreshing(true);
     const profile = user ? await getProfile(user.id) : null;
-    setRole(profile?.role ?? null);
-    const [evs, hist] = await Promise.all([
-      listOpenEvents(),
-      user ? getAttendanceHistory(user.id, 200) : Promise.resolve([]),
-    ]);
+    const currentRole = profile?.role ?? null;
+    setRole(currentRole);
+
+    const evs = await listOpenEvents();
     setEvents(evs);
-    setPresent(hist.filter((h) => h.status === 'present').length);
-    setLate(hist.filter((h) => h.status === 'late').length);
+
+    if (!user) {
+      setRefreshing(false);
+      return;
+    }
+
+    if (currentRole === 'teacher') {
+      const mine = await getTeacherEventAttendance(user.id);
+      setMyEventsCount(mine.length);
+      setTotalScans(mine.reduce((sum, e) => sum + e.attendeeCount, 0));
+    } else if (currentRole === 'admin') {
+      const [allEvents, rows] = await Promise.all([
+        listAllEvents(),
+        getAllAttendance(200, 0),
+      ]);
+      setAllEventsCount(allEvents.length);
+      setAllAttendanceCount(rows.length);
+    } else {
+      const hist = await getAttendanceHistory(user.id, 200);
+      setPresent(hist.filter((h) => h.status === 'present').length);
+      setLate(hist.filter((h) => h.status === 'late').length);
+    }
     setRefreshing(false);
   }, [user]);
 
@@ -55,6 +89,39 @@ export default function HomeScreen() {
   // Stats + Scan kay para ra sa student. Sa teacher/admin kay 0 ra permi
   // ug dili sila maka-scan, so tagoon para limpyo.
   const showStudentTools = role === 'student';
+  const canManage = role === 'teacher' || role === 'admin';
+  const isAdmin = role === 'admin';
+
+  const subtitle =
+    role === 'teacher'
+      ? 'Create events and track student attendance.'
+      : role === 'admin'
+        ? 'Manage events, users, and attendance across the school.'
+        : 'Scan event QR codes to record your attendance instantly.';
+
+  const manageStats = isAdmin
+    ? [
+        { label: 'Open events', value: events.length, color: COLORS.accent, border: '#22D3EE55' },
+        { label: 'Events', value: allEventsCount, color: COLORS.magenta, border: '#D946EF55' },
+        { label: 'Recent scans', value: allAttendanceCount, color: COLORS.success, border: '#34D39955' },
+      ]
+    : [
+        { label: 'Open events', value: events.length, color: COLORS.accent, border: '#22D3EE55' },
+        { label: 'My events', value: myEventsCount, color: COLORS.magenta, border: '#D946EF55' },
+        { label: 'Total scans', value: totalScans, color: COLORS.success, border: '#34D39955' },
+      ];
+
+  const quickActions: QuickAction[] = isAdmin
+    ? [
+        { label: 'Admin Panel', icon: 'shield-checkmark-outline', color: COLORS.warning, href: '/(tabs)/admin' },
+        { label: 'Create Event', icon: 'add-circle-outline', color: COLORS.accent, href: '/(tabs)/teacher' },
+        { label: 'Attendance', icon: 'time-outline', color: COLORS.magenta, href: '/(tabs)/history' },
+      ]
+    : [
+        { label: 'Create Event', icon: 'add-circle-outline', color: COLORS.accent, href: '/(tabs)/teacher' },
+        { label: 'My Events', icon: 'clipboard-outline', color: COLORS.primary, href: '/(tabs)/teacher' },
+        { label: 'Attendance', icon: 'time-outline', color: COLORS.magenta, href: '/(tabs)/history' },
+      ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -67,7 +134,7 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <View>
             <Text style={styles.greet}>School Event Attendance</Text>
-            <Text style={styles.subtitle}>Scan event QR codes to record your attendance instantly.</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
 
             {showStudentTools ? (
               <>
@@ -90,6 +157,51 @@ export default function HomeScreen() {
                   <AppButton theme="primary" title="Scan QR Code" icon="qr-code-outline" onPress={() => router.push('/(tabs)/scan')} />
                 </View>
               </>
+            ) : canManage ? (
+              <>
+                <View style={styles.statsRow}>
+                  {manageStats.map((stat) => (
+                    <View
+                      key={stat.label}
+                      style={[styles.statCard, { borderColor: stat.border }]}
+                    >
+                      <Text style={[styles.statNum, { color: stat.color }]}>
+                        {stat.value}
+                      </Text>
+                      <Text style={styles.statLabel}>{stat.label}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <Text style={styles.sectionTitle}>Quick actions</Text>
+                <View style={styles.quickRow}>
+                  {quickActions.map((action) => (
+                    <Pressable
+                      key={action.label}
+                      onPress={() => router.push(action.href)}
+                      style={({ pressed }) => [
+                        styles.quickCard,
+                        pressed && styles.quickCardPressed,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.quickIcon,
+                          {
+                            backgroundColor: `${action.color}22`,
+                            borderColor: `${action.color}55`,
+                          },
+                        ]}
+                      >
+                        <Ionicons name={action.icon} size={20} color={action.color} />
+                      </View>
+                      <Text style={styles.quickLabel} numberOfLines={2}>
+                        {action.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
             ) : null}
 
             <Text style={styles.sectionTitle}>Available Events ({events.length})</Text>
@@ -99,9 +211,21 @@ export default function HomeScreen() {
           <View style={styles.emptyWrap}>
             <Ionicons name="calendar-outline" size={44} color={COLORS.muted} />
             <Text style={styles.emptyTitle}>No open events</Text>
-            <Text style={styles.empty}>Pull to refresh or check your history.</Text>
+            <Text style={styles.empty}>
+              {isAdmin
+                ? 'Create an event or check the admin panel.'
+                : role === 'teacher'
+                  ? 'Create an event to start collecting attendance.'
+                  : 'Pull to refresh or check your history.'}
+            </Text>
             <View style={{ width: '100%', marginTop: 12, gap: 10 }}>
-              <AppButton title="Scan Now" icon="qr-code-outline" theme="primary" onPress={() => router.push('/(tabs)/scan')} />
+              {showStudentTools ? (
+                <AppButton title="Scan Now" icon="qr-code-outline" theme="primary" onPress={() => router.push('/(tabs)/scan')} />
+              ) : isAdmin ? (
+                <AppButton title="Open Admin Panel" icon="shield-checkmark-outline" theme="primary" onPress={() => router.push('/(tabs)/admin')} />
+              ) : role === 'teacher' ? (
+                <AppButton title="Create Event" icon="add-outline" theme="primary" onPress={() => router.push('/(tabs)/teacher')} />
+              ) : null}
               <AppButton title="View History" icon="time-outline" onPress={() => router.push('/(tabs)/history')} />
             </View>
           </View>
@@ -145,7 +269,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: 'transparent' },
   list: { flex: 1 },
   listContent: { paddingHorizontal: 20, gap: 12, paddingBottom: 32, paddingTop: 20 },
   greet: { fontSize: 24, fontWeight: '800', fontFamily: 'SpaceGrotesk_700Bold', color: COLORS.textPrimary, marginBottom: 4, letterSpacing: -0.3 },
@@ -155,6 +279,34 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 22, fontWeight: '800', fontFamily: 'SpaceGrotesk_700Bold' },
   statLabel: { fontSize: 12, fontWeight: '600', fontFamily: 'Inter_600SemiBold', color: COLORS.textSecondary },
   scanCta: { marginBottom: 18 },
+  quickRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
+  quickCard: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 8,
+  },
+  quickCardPressed: { opacity: 0.75 },
+  quickIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: 'Inter_600SemiBold',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+  },
   sectionTitle: { fontSize: 16, fontWeight: '800', fontFamily: 'SpaceGrotesk_700Bold', color: COLORS.textPrimary, marginBottom: 4 },
   card: { flexDirection: 'row', gap: 12, backgroundColor: COLORS.card, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, padding: 14 },
   dateBadge: { width: 56, height: 64, borderRadius: 12, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, alignItems: 'center', justifyContent: 'center' },

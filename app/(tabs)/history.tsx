@@ -342,11 +342,11 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  list: { flex: 1, backgroundColor: COLORS.background },
+  list: { flex: 1, backgroundColor: 'transparent' },
   listContent: { padding: 16, gap: 12 },
   centered: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

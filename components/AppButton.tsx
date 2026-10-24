@@ -1,5 +1,7 @@
+import { useId } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { COLORS } from '@/constants/colors';
 
 type AppButtonProps = {
@@ -18,6 +20,7 @@ export default function AppButton({
   disabled,
 }: AppButtonProps) {
   const isPrimary = theme === 'primary';
+  const gradientId = `appBtn${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <Pressable
       onPress={onPress}
@@ -29,6 +32,20 @@ export default function AppButton({
         disabled && styles.disabled,
       ]}
     >
+      {isPrimary ? (
+        <View pointerEvents="none" style={styles.gradientLayer}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0" stopColor="#7C3AED" />
+                <Stop offset="0.5" stopColor={COLORS.primary} />
+                <Stop offset="1" stopColor={COLORS.magenta} />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" rx={14} fill={`url(#${gradientId})`} />
+          </Svg>
+        </View>
+      ) : null}
       <View style={styles.row}>
         <Ionicons
           name={icon}
@@ -53,23 +70,27 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   primaryFill: {
-    backgroundColor: COLORS.primary,
-    borderWidth: 0,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 6,
   },
   secondaryFill: {
     backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+  gradientLayer: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    zIndex: 1,
   },
   label: {
     fontSize: 16,
